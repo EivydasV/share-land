@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique @db.VarChar(255)
+  name          String   @db.VarChar(255)
+  password      String   @unique @db.VarChar(255)
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  group         Group[]
+  invitesSentBy Invite[] @relation("sentBy")
+  myInvites     Invite[] @relation("inviteTarget")
+  files         File[]
+  createdGroups Group[]  @relation("createdGroups")
+}
+
+model Group {
+  id           String   @id @default(cuid())
+  createdBy    User     @relation(fields: [createdById], references: [id], name: "createdGroups")
+  name         String   @unique @db.VarChar(30)
+  isPublic     Boolean
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdById  String
+  participants User[]
+  files        File[]
+  invites      Invite[]
+}
+
+model File {
+  id             String   @id @default(cuid())
+  originalName   String   @unique @db.VarChar(100)
+  downloandCount Int      @default(0)
+  path           String   @db.VarChar(255)
+  group          Group    @relation(fields: [groupId], references: [id])
+  sentBy         User     @relation(fields: [userId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  groupId        String
+  userId         String
+}
+
+model Invite {
+  group     Group    @relation(fields: [groupId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], name: "inviteTarget", map: "invite_user_fk")
+  sentBy    User     @relation(fields: [sentById], references: [id], name: "sentBy", map: "invite_sentBy_fk")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  groupId   String
+  sentById  String
+  userId    String
+
+  @@id([groupId, userId, sentById])
+}
