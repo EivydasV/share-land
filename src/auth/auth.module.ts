@@ -1,45 +1,19 @@
-import {
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  DynamicModule,
-} from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 
 import { AuthMiddleware } from './auth.middleware';
-import { ConfigInjectionToken, AuthModuleConfig } from './config.interface';
 import { SupertokensService } from './supertokens/supertokens.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { CaslModule } from 'src/casl/casl.module';
+import { ConfigurableModuleClass } from './auth.module-definition';
 
 @Module({
-  imports: [],
+  imports: [CaslModule],
   providers: [SupertokensService, AuthService],
-  exports: [],
   controllers: [AuthController],
 })
-export class AuthModule implements NestModule {
+export class AuthModule extends ConfigurableModuleClass {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(AuthMiddleware).forRoutes('*');
-  }
-  static forRoot({
-    connectionURI,
-    apiKey,
-    appInfo,
-  }: AuthModuleConfig): DynamicModule {
-    return {
-      providers: [
-        {
-          useValue: {
-            appInfo,
-            connectionURI,
-            apiKey,
-          },
-          provide: ConfigInjectionToken,
-        },
-      ],
-      exports: [],
-      imports: [],
-      module: AuthModule,
-    };
   }
 }

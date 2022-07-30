@@ -17,7 +17,7 @@ COPY prisma ./
 COPY tsconfig.json ./
 # Here we install all the deps
 RUN yarn install
-
+RUN yarn prisma:generate
 # Bundle app source / copy all other files
 COPY . .
 
@@ -28,19 +28,19 @@ RUN yarn run build
 ## PRODUCTION ##
 ################
 # Build another image named production
-FROM node:16 AS production
+# FROM node:16 AS production
 
-# Set node env to prod
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
+# # Set node env to prod
+# ARG NODE_ENV=production
+# ENV NODE_ENV=${NODE_ENV}
 
-# Set Working Directory
-WORKDIR /eivydas/src/app
+# # Set Working Directory
+# WORKDIR /eivydas/src/app
 
-# Copy all from development stage
-COPY --from=development /eivydas/src/app/ .
+# # Copy all from development stage
+# COPY --from=development /eivydas/src/app/ .
 
-EXPOSE 5000
+# EXPOSE 5000
 
 # Run app
 CMD [ "node", "dist/main" ]

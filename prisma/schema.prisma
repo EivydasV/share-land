@@ -41,19 +41,22 @@ model Group {
   participants User[]
   files        File[]
   invites      Invite[]
+
+  @@index(createdById)
 }
 
 model File {
   id             String   @id @default(cuid())
-  originalName   String   @unique @db.VarChar(100)
+  originalName   String   @db.VarChar(255)
   downloandCount Int      @default(0)
-  path           String   @db.VarChar(255)
+  path           String   @unique @db.VarChar(255)
   group          Group    @relation(fields: [groupId], references: [id])
-  sentBy         User     @relation(fields: [userId], references: [id])
+  sentBy         User     @relation(fields: [sentById], references: [id])
+  size           Int      @db.Integer
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   groupId        String
-  userId         String
+  sentById       String
 }
 
 model Invite {

@@ -16,13 +16,18 @@ export class EntityExistsConstrains implements ValidatorConstraintInterface {
 
   async validate(text: string, validationArguments: ValidationArguments) {
     const { property } = validationArguments;
+    console.log(text);
+
     const [model, field, mustExist] = validationArguments.constraints as [
       Prisma.ModelName,
       string,
       boolean,
     ];
+    if (!text) {
+      return false;
+    }
     const entity = await this.prisma[model.toLowerCase()].findUnique({
-      where: { [field ?? property]: text ?? '' },
+      where: { [field ?? property]: text },
     });
 
     if (mustExist) {

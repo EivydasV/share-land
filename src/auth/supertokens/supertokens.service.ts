@@ -1,17 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import supertokens from 'supertokens-node';
 import Session from 'supertokens-node/recipe/session';
+import { MODULE_OPTIONS_TOKEN } from '../auth.module-definition';
 
-import { ConfigInjectionToken, AuthModuleConfig } from '../config.interface';
+import { AuthModuleConfig } from '../config.interface';
 
 @Injectable()
 export class SupertokensService {
-  constructor(@Inject(ConfigInjectionToken) private config: AuthModuleConfig) {
+  constructor(
+    @Inject(MODULE_OPTIONS_TOKEN) private readonly config: AuthModuleConfig,
+  ) {
     supertokens.init({
-      appInfo: config.appInfo,
+      appInfo: this.config.appInfo,
       supertokens: {
-        connectionURI: config.connectionURI,
-        apiKey: config.apiKey,
+        connectionURI: this.config.connectionURI,
+        apiKey: this.config.apiKey,
       },
       recipeList: [Session.init()],
     });

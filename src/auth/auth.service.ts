@@ -5,17 +5,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as argon from 'argon2';
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
   async login(loginUserDto: LoginUserDto) {
     return this.prisma.user.findUnique({
       where: {
         email: loginUserDto.email,
-      },
-      select: {
-        email: true,
-        id: true,
-        role: true,
-        password: true,
       },
     });
   }
@@ -37,6 +31,13 @@ export class AuthService {
     return this.prisma.user.findUnique({
       where: {
         id,
+      },
+    });
+  }
+  async findByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: {
+        email,
       },
     });
   }

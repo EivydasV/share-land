@@ -25,8 +25,11 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-
+      transform: true,
       errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
       forbidUnknownValues: true,
       // exceptionFactory: (validationErrors: ValidationError[] = []) => {
       //   console.log(validationErrors);
