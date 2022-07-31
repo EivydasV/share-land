@@ -11,7 +11,7 @@ export class SendgridService {
   ) {
     SendGrid.setApiKey(this.config.SENDGRID_API_KEY);
   }
-  async send(mail: Required<Omit<SendGrid.MailDataRequired, 'from'>>) {
+  async send(mail: Omit<SendGrid.MailDataRequired, 'from'>) {
     const transport = await SendGrid.send(mail as SendGrid.MailDataRequired);
     // avoid this on production. use log instead :)
     console.log(`E-Mail sent to ${mail.to}`);
@@ -23,7 +23,6 @@ export class SendgridService {
       subject: 'Hello from sendgrid',
       text: 'Hello',
       html: '<h1>Hello</h1>',
-      from: 'd',
     });
   }
 }
