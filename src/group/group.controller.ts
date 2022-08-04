@@ -49,7 +49,6 @@ export class GroupController {
     @Session() session: SessionContainer,
   ): Promise<GroupSerialization> {
     const authId = session.getUserId();
-    console.log(createGroupDto);
 
     const createGroup = await this.groupService.createGroup(
       authId,

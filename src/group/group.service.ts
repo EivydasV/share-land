@@ -44,8 +44,9 @@ export class GroupService {
         participants: { skip, take },
       },
     });
+    console.log(query);
 
-    return paginate(query.participants, query._count.participants);
+    return paginate(query?.participants, query?._count?.participants);
   }
   async userBelongsToRoom(authId: string, groupId: string) {
     const query = await this.prisma.group.findUnique({

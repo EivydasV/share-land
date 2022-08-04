@@ -6,9 +6,10 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { CaslModule } from 'src/casl/casl.module';
 import { ConfigurableModuleClass } from './auth.module-definition';
+import { SendgridModule } from 'src/sendgrid/sendgrid.module';
 
 @Module({
-  imports: [CaslModule],
+  imports: [CaslModule, SendgridModule],
   providers: [SupertokensService, AuthService],
   controllers: [AuthController],
 })

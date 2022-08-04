@@ -41,4 +41,38 @@ export class AuthService {
       },
     });
   }
+  async createPasswordResetToken(email: string, token: string, date: Date) {
+    const hashedToken = await argon.hash(token);
+    return this.prisma.user.update({
+      where: {
+        email,
+      },
+      data: {
+        resetPasswordToken: hashedToken,
+        resetPasswordTokenExpiresAt: date,
+      },
+    });
+  }
+  async removePasswordResetToken(userId: string) {
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        resetPasswordToken: null,
+        resetPasswordTokenExpiresAt: null,
+      },
+    });
+  }
+  async updatePassword(userId: string, password: string) {
+    // const hashedPassword = await argon.hash(password);
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        password: password,
+      },
+    });
+  }
 }

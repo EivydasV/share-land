@@ -1,15 +1,17 @@
 import { DefaultSerialization } from './../common/serialization/DefaultSerialization.serialization';
-import { Role } from '@prisma/client';
 import { USER_ME, UserSerialization } from './serialization/user.serialization';
 import {
   BadRequestException,
   Body,
   ClassSerializerInterceptor,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
+  Put,
   Res,
   SerializeOptions,
   Session,
@@ -22,15 +24,24 @@ import {
   SessionContainer,
 } from 'supertokens-node/recipe/session';
 import { AuthService } from './auth.service';
-import { Roles } from 'src/common/decorators/roles.decorator';
 import { LoginUserDto } from './dto/login-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 import { ForgotPasswordUserDto } from './dto/forgot-password.dto';
+import { SendgridService } from 'src/sendgrid/sendgrid.service';
+import { add, isFuture, isPast } from 'date-fns';
+import { nanoid } from 'nanoid';
+import { ResetPasswordUserDto } from './dto/reset-password.dto';
+import timingSafeCompare from 'tsscmp';
+import argon from 'argon2';
+
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly sendGridService: SendgridService,
+  ) {}
 
   @Post('register')
   @Public()
@@ -86,13 +97,44 @@ export class AuthController {
 
     return new UserSerialization(user);
   }
+  @Public()
+  @HttpCode(HttpStatus.OK)
   @Post('forgot-password')
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordUserDto,
   ): Promise<DefaultSerialization> {
     const user = await this.authService.findByEmail(forgotPasswordDto.email);
     if (user) {
+      const token = nanoid(128);
+      const date = add(new Date(), { hours: 2 });
+      await this.authService.createPasswordResetToken(user.email, token, date);
+      await this.sendGridService.send({
+        to: 'eivydasvickus@gmail.com',
+        html: `<h3>Reset your password token: ${token}</h3>`,
+        subject: 'Reset your password',
+      });
     }
     return { message: 'Check your email for a password reset link' };
+  }
+  @Public()
+  @Put('reset-password/:token/:userId')
+  async resetPassword(
+    @Param('token') token: string,
+    @Param('userId') userId: string,
+    @Body() resetPasswordDto: ResetPasswordUserDto,
+  ): Promise<DefaultSerialization> {
+    const user = await this.authService.findById(userId);
+    console.log(user, token);
+
+    if (
+      !user ||
+      isPast(user.resetPasswordTokenExpiresAt) ||
+      !user.resetPasswordToken ||
+      !(await argon.verify(user.resetPasswordToken, token))
+    )
+      throw new ForbiddenException();
+    await this.authService.updatePassword(userId, resetPasswordDto.password);
+    await this.authService.removePasswordResetToken(userId);
+    return { message: 'Your password successfully updated' };
   }
 }

@@ -1,11 +1,9 @@
-import { PaginatedSerialization } from 'src/common/serialization/PaginatedSerialization.serialization';
-
 export interface IPaginationOptions {
   page: number;
   pageSize?: number;
 }
 export interface IPaginateFunction<T> {
-  data: T;
+  data: T | undefined[];
   count: number;
   totalPages: number;
   currentPage: number;
@@ -32,8 +30,8 @@ export const createPrismaOffsetPagination = ({
       page = Math.abs(page);
       page = page === 0 ? 1 : page;
       return {
-        data,
-        count,
+        data: data ?? [],
+        count: count ?? 0,
         totalPages,
         currentPage: page,
         hasNextPage,

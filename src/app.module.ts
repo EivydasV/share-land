@@ -17,7 +17,7 @@ import authConfig from './auth/auth.config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ cache: true }),
+    ConfigModule.forRoot({}),
     AuthModule.forRootAsync({
       inject: [authConfig.KEY],
       imports: [ConfigModule.forFeature(authConfig)],

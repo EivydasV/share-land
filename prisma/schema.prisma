@@ -16,18 +16,20 @@ enum Role {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique @db.VarChar(255)
-  name          String   @db.VarChar(255)
-  password      String   @unique @db.VarChar(255)
-  role          Role     @default(USER)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  group         Group[]
-  invitesSentBy Invite[] @relation("sentBy")
-  myInvites     Invite[] @relation("inviteTarget")
-  files         File[]
-  createdGroups Group[]  @relation("createdGroups")
+  id                          String    @id @default(cuid())
+  email                       String    @unique @db.VarChar(255)
+  name                        String    @db.VarChar(255)
+  password                    String    @unique @db.VarChar(255)
+  resetPasswordToken          String?   @db.VarChar(255)
+  resetPasswordTokenExpiresAt DateTime?
+  role                        Role      @default(USER)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  group                       Group[]
+  invitesSentBy               Invite[]  @relation("sentBy")
+  myInvites                   Invite[]  @relation("inviteTarget")
+  files                       File[]
+  createdGroups               Group[]   @relation("createdGroups")
 }
 
 model Group {

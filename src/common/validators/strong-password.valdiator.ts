@@ -12,7 +12,7 @@ import validator from 'validator';
 @Injectable()
 export class IsStrongPasswordRule implements ValidatorConstraintInterface {
   validate(value: string) {
-    return validator.isStrongPassword(value, { minSymbols: 0 });
+    return validator.isStrongPassword(value ?? '', { minSymbols: 0 });
   }
 
   defaultMessage(args: ValidationArguments) {

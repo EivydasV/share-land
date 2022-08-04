@@ -6,5 +6,6 @@ import { SendgridService } from './sendgrid.service';
 @Module({
   imports: [ConfigModule.forFeature(sendgridConfig)],
   providers: [SendgridService],
+  exports: [SendgridService],
 })
 export class SendgridModule {}
