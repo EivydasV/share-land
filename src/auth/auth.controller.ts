@@ -124,7 +124,6 @@ export class AuthController {
     @Body() resetPasswordDto: ResetPasswordUserDto,
   ): Promise<DefaultSerialization> {
     const user = await this.authService.findById(userId);
-    console.log(user, token);
 
     if (
       !user ||
@@ -133,8 +132,13 @@ export class AuthController {
       !(await argon.verify(user.resetPasswordToken, token))
     )
       throw new ForbiddenException();
-    await this.authService.updatePassword(userId, resetPasswordDto.password);
-    await this.authService.removePasswordResetToken(userId);
+    const updatePasswordPromise = this.authService.updatePassword(
+      userId,
+      resetPasswordDto.password,
+    );
+    const removePasswordResetTokenPromise =
+      this.authService.removePasswordResetToken(userId);
+    await Promise.all([updatePasswordPromise, removePasswordResetTokenPromise]);
     return { message: 'Your password successfully updated' };
   }
 }
