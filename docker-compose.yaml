@@ -41,7 +41,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: yarn start:dev
+    command: yarn start:debug
     env_file:
       - ./.env
     volumes:
@@ -51,6 +51,7 @@ services:
       - postgres
     ports:
       - '5000:5000'
+      - '9229:9229'
     restart: always
 
 volumes:

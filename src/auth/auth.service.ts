@@ -3,6 +3,8 @@ import { LoginUserDto } from './dto/login-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as argon from 'argon2';
+import { add } from 'date-fns';
+import { nanoid } from 'nanoid';
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
@@ -13,7 +15,7 @@ export class AuthService {
       },
     });
   }
-  async comparePassword(hash: string, candidate: string): Promise<boolean> {
+  async compareHash(hash: string, candidate: string): Promise<boolean> {
     return argon.verify(hash, candidate);
   }
   async create(registerUserDto: CreateUserDto) {
@@ -41,17 +43,21 @@ export class AuthService {
       },
     });
   }
-  async createPasswordResetToken(email: string, token: string, date: Date) {
-    const hashedToken = await argon.hash(token);
-    return this.prisma.user.update({
+  async createPasswordResetToken(
+    email: string,
+    token: string = nanoid(128),
+    date: Date = add(new Date(), { hours: 2 }),
+  ) {
+    const user = await this.prisma.user.update({
       where: {
         email,
       },
       data: {
-        resetPasswordToken: hashedToken,
+        resetPasswordToken: token,
         resetPasswordTokenExpiresAt: date,
       },
     });
+    return { user, token, date };
   }
   async removePasswordResetToken(userId: string) {
     return this.prisma.user.update({
@@ -65,7 +71,6 @@ export class AuthService {
     });
   }
   async updatePassword(userId: string, password: string) {
-    // const hashedPassword = await argon.hash(password);
     return this.prisma.user.update({
       where: {
         id: userId,

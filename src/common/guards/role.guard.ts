@@ -17,7 +17,7 @@ export class RoleGuard implements CanActivate {
 
     const sess = await Sess.getSession(ctx.getRequest(), resp);
 
-    if (sess.getAccessTokenPayload().role.includes(role)) return true;
+    if (sess.getAccessTokenPayload()?.role?.includes(role)) return true;
 
     return false;
   }

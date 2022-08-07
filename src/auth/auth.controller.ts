@@ -7,8 +7,10 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Post,
   Put,
@@ -29,11 +31,12 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 import { ForgotPasswordUserDto } from './dto/forgot-password.dto';
 import { SendgridService } from 'src/sendgrid/sendgrid.service';
-import { add, isFuture, isPast } from 'date-fns';
-import { nanoid } from 'nanoid';
+import { formatDistance, isPast, addDays, addHours } from 'date-fns';
 import { ResetPasswordUserDto } from './dto/reset-password.dto';
-import timingSafeCompare from 'tsscmp';
 import argon from 'argon2';
+import superSession from 'supertokens-node/recipe/session';
+import path from 'node:path';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -65,7 +68,7 @@ export class AuthController {
 
     if (
       !user ||
-      !(await this.authService.comparePassword(
+      !(await this.authService.compareHash(
         user.password,
         LoginUserDto.password,
       ))
@@ -95,22 +98,30 @@ export class AuthController {
       throw new UnauthorizedException();
     }
 
-    return new UserSerialization(user);
+    return user;
   }
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('forgot-password')
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordUserDto,
+    @Headers('host') host: string,
   ): Promise<DefaultSerialization> {
     const user = await this.authService.findByEmail(forgotPasswordDto.email);
     if (user) {
-      const token = nanoid(128);
-      const date = add(new Date(), { hours: 2 });
-      await this.authService.createPasswordResetToken(user.email, token, date);
+      const { token, date } = await this.authService.createPasswordResetToken(
+        user.email,
+      );
       await this.sendGridService.send({
         to: 'eivydasvickus@gmail.com',
-        html: `<h3>Reset your password token: ${token}</h3>`,
+        html: `<p>Reset your password token: <h3>http://${path.join(
+          host,
+          '/v1/api/auth/reset-password/',
+          token,
+          user.id,
+        )}</h3>
+        <h4>Valid for <bold>${formatDistance(date, new Date())}</bold></h4>
+        `,
         subject: 'Reset your password',
       });
     }
@@ -130,8 +141,9 @@ export class AuthController {
       isPast(user.resetPasswordTokenExpiresAt) ||
       !user.resetPasswordToken ||
       !(await argon.verify(user.resetPasswordToken, token))
-    )
+    ) {
       throw new ForbiddenException();
+    }
     const updatePasswordPromise = this.authService.updatePassword(
       userId,
       resetPasswordDto.password,
@@ -139,6 +151,30 @@ export class AuthController {
     const removePasswordResetTokenPromise =
       this.authService.removePasswordResetToken(userId);
     await Promise.all([updatePasswordPromise, removePasswordResetTokenPromise]);
+    await superSession.revokeAllSessionsForUser(userId);
+
     return { message: 'Your password successfully updated' };
   }
+  @Put('update-password')
+  async updatePassword(
+    @Session() session: SessionContainer,
+    @Body() updatePasswordDto: UpdatePasswordDto,
+  ): Promise<DefaultSerialization> {
+    const authId = session.getUserId();
+    const user = await this.authService.findById(authId);
+    if (!user) throw new NotFoundException();
+
+    const comparePassword = await this.authService.compareHash(
+      user.password,
+      updatePasswordDto.currentPassword,
+    );
+    if (!comparePassword)
+      throw new BadRequestException('wrong current password');
+    await this.authService.updatePassword(
+      authId,
+      updatePasswordDto.newPassword,
+    );
+    return { message: 'Password successfully updated' };
+  }
+  async updateUser() {}
 }
