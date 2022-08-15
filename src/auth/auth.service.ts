@@ -5,16 +5,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as argon from 'argon2';
 import { add } from 'date-fns';
 import { nanoid } from 'nanoid';
+import { User } from '@prisma/client';
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
-  async login(loginUserDto: LoginUserDto) {
-    return this.prisma.user.findUnique({
-      where: {
-        email: loginUserDto.email,
-      },
-    });
-  }
   async compareHash(hash: string, candidate: string): Promise<boolean> {
     return argon.verify(hash, candidate);
   }
@@ -30,14 +24,14 @@ export class AuthService {
     });
   }
   async findById(id: string) {
-    return this.prisma.user.findUnique({
+    return this.prisma.user.findUniqueOrThrow({
       where: {
         id,
       },
     });
   }
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
+    return this.prisma.user.findUniqueOrThrow({
       where: {
         email,
       },
@@ -78,6 +72,17 @@ export class AuthService {
       data: {
         password: password,
       },
+    });
+  }
+  async updateUser(
+    authId: string,
+    newData: Partial<Pick<User, 'email' | 'name'>>,
+  ) {
+    return this.prisma.user.update({
+      where: {
+        id: authId,
+      },
+      data: newData,
     });
   }
 }

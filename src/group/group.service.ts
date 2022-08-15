@@ -65,7 +65,7 @@ export class GroupService {
     return query.participants.length > 0;
   }
   async getGroupById(groupId: string) {
-    return this.prisma.group.findUnique({
+    return this.prisma.group.findUniqueOrThrow({
       where: {
         id: groupId,
       },

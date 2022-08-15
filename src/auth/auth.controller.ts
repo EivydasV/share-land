@@ -1,3 +1,4 @@
+import { UpdateUserDto } from './dto/update-user.dto';
 import { DefaultSerialization } from './../common/serialization/DefaultSerialization.serialization';
 import { USER_ME, UserSerialization } from './serialization/user.serialization';
 import {
@@ -31,13 +32,15 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 import { ForgotPasswordUserDto } from './dto/forgot-password.dto';
 import { SendgridService } from 'src/sendgrid/sendgrid.service';
-import { formatDistance, isPast, addDays, addHours } from 'date-fns';
+import { formatDistance, isPast } from 'date-fns';
 import { ResetPasswordUserDto } from './dto/reset-password.dto';
 import argon from 'argon2';
 import superSession from 'supertokens-node/recipe/session';
 import path from 'node:path';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-
+import _ from 'lodash';
+import diff from 'src/utils/diff';
+import { User } from '@prisma/client';
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
@@ -64,16 +67,21 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Body() LoginUserDto: LoginUserDto,
   ): Promise<DefaultSerialization> {
-    const user = await this.authService.login(LoginUserDto);
+    const errMessage = 'No User found';
+    let user: User;
+    try {
+      user = await this.authService.findByEmail(LoginUserDto.email);
+    } catch (_e) {
+      throw new BadRequestException(errMessage);
+    }
 
     if (
-      !user ||
       !(await this.authService.compareHash(
         user.password,
         LoginUserDto.password,
       ))
     ) {
-      throw new BadRequestException('Invalid credentials');
+      throw new BadRequestException(errMessage);
     }
 
     await createNewSession(res, user.id, { role: user.role });
@@ -93,12 +101,8 @@ export class AuthController {
   async me(@Session() session: SessionContainer): Promise<UserSerialization> {
     const userID = session.getUserId();
     const user = await this.authService.findById(userID);
-    if (!user) {
-      await session.revokeSession();
-      throw new UnauthorizedException();
-    }
 
-    return user;
+    return new UserSerialization(user);
   }
   @Public()
   @HttpCode(HttpStatus.OK)
@@ -107,24 +111,28 @@ export class AuthController {
     @Body() forgotPasswordDto: ForgotPasswordUserDto,
     @Headers('host') host: string,
   ): Promise<DefaultSerialization> {
-    const user = await this.authService.findByEmail(forgotPasswordDto.email);
-    if (user) {
-      const { token, date } = await this.authService.createPasswordResetToken(
-        user.email,
-      );
-      await this.sendGridService.send({
-        to: 'eivydasvickus@gmail.com',
-        html: `<p>Reset your password token: <h3>http://${path.join(
-          host,
-          '/v1/api/auth/reset-password/',
-          token,
-          user.id,
-        )}</h3>
+    let user: User;
+    try {
+      user = await this.authService.findByEmail(forgotPasswordDto.email);
+    } catch (_e) {
+      return { message: 'Check your email for a password reset link' };
+    }
+    const { token, date } = await this.authService.createPasswordResetToken(
+      user.email,
+    );
+    await this.sendGridService.send({
+      to: 'eivydasvickus@gmail.com',
+      html: `<p>Reset your password token: <h3>http://${path.join(
+        host,
+        '/v1/api/auth/reset-password/',
+        token,
+        user.id,
+      )}</h3>
         <h4>Valid for <bold>${formatDistance(date, new Date())}</bold></h4>
         `,
-        subject: 'Reset your password',
-      });
-    }
+      subject: 'Reset your password',
+    });
+
     return { message: 'Check your email for a password reset link' };
   }
   @Public()
@@ -137,7 +145,6 @@ export class AuthController {
     const user = await this.authService.findById(userId);
 
     if (
-      !user ||
       isPast(user.resetPasswordTokenExpiresAt) ||
       !user.resetPasswordToken ||
       !(await argon.verify(user.resetPasswordToken, token))
@@ -162,7 +169,6 @@ export class AuthController {
   ): Promise<DefaultSerialization> {
     const authId = session.getUserId();
     const user = await this.authService.findById(authId);
-    if (!user) throw new NotFoundException();
 
     const comparePassword = await this.authService.compareHash(
       user.password,
@@ -176,5 +182,16 @@ export class AuthController {
     );
     return { message: 'Password successfully updated' };
   }
-  async updateUser() {}
+  @Put('update-user')
+  async updateUser(
+    @Session() session: SessionContainer,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    const authId = session.getUserId();
+    const user = await this.authService.findById(authId);
+    const diffs = diff(user, updateUserDto);
+    if (!diffs) throw new BadRequestException('No changes');
+    const updatedUser = await this.authService.updateUser(authId, diffs);
+    return updatedUser;
+  }
 }
