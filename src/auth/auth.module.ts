@@ -12,6 +12,7 @@ import { SendgridModule } from 'src/sendgrid/sendgrid.module';
   imports: [CaslModule, SendgridModule],
   providers: [SupertokensService, AuthService],
   controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule extends ConfigurableModuleClass {
   configure(consumer: MiddlewareConsumer) {
